@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, TrendingDown } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useMobile } from '@/hooks/useMobile';
 
 interface AnalyticsData {
   label: string;
@@ -13,6 +14,8 @@ const AnalyticsPage = () => {
   const [storageData, setStorageData] = useState<number[]>([]);
   const [hostData, setHostData] = useState<number[]>([]);
   const [txData, setTxData] = useState<number[]>([]);
+  const [activeChart, setActiveChart] = useState(0);
+  const { isMobile } = useMobile();
   
   useEffect(() => {
     setStorageData(Array.from({ length: 90 }, (_, i) => Math.random() * 500 + 4000 + i * 10));
@@ -27,6 +30,12 @@ const AnalyticsPage = () => {
     { label: 'Avg Block Time', value: 10.2, change: 0, trend: 'stable' },
     { label: 'Network Utilization', value: 67.4, change: 8.9, trend: 'up' },
     { label: 'Contract Success', value: 98.2, change: 0.3, trend: 'up' },
+  ];
+
+  const charts = [
+    { title: 'Storage Capacity', data: storageData, color: 'secondary', unit: 'TB' },
+    { title: 'Active Hosts', data: hostData, color: 'success', unit: 'hosts' },
+    { title: 'Transaction Volume', data: txData, color: 'primary', unit: 'txs' },
   ];
 
   const AreaChart = ({ data, color, height = 120 }: { data: number[]; color: string; height?: number }) => {
@@ -66,9 +75,131 @@ const AnalyticsPage = () => {
     );
   };
 
+  // Mobile View
+  if (isMobile) {
+    return (
+      <div className="flex flex-col">
+        {/* Mobile Metrics Grid */}
+        <div className="grid grid-cols-2 gap-2 p-3">
+          {metrics.slice(0, 4).map((metric) => (
+            <div key={metric.label} className="bg-muted/30 border border-border p-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[9px] uppercase tracking-wider text-foreground-subtle">
+                  {metric.label}
+                </span>
+                {metric.trend === 'up' && <TrendingUp size={10} className="text-success" />}
+                {metric.trend === 'down' && <TrendingDown size={10} className="text-primary" />}
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className="font-mono text-lg font-semibold">
+                  {metric.value.toLocaleString()}
+                </span>
+                {metric.change !== 0 && (
+                  <span className={cn(
+                    'text-[10px] font-mono',
+                    metric.change > 0 ? 'text-success' : 'text-primary'
+                  )}>
+                    {metric.change > 0 ? '+' : ''}{metric.change}%
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Swipeable Charts */}
+        <div className="border-t border-border">
+          {/* Chart Navigation */}
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle">
+            <button
+              onClick={() => setActiveChart(Math.max(0, activeChart - 1))}
+              className={cn(
+                'p-1',
+                activeChart === 0 ? 'text-foreground-subtle' : 'text-foreground'
+              )}
+              disabled={activeChart === 0}
+            >
+              <ChevronLeft size={16} />
+            </button>
+            
+            <span className="text-xs font-medium uppercase tracking-wider">
+              {charts[activeChart]?.title}
+            </span>
+            
+            <button
+              onClick={() => setActiveChart(Math.min(charts.length - 1, activeChart + 1))}
+              className={cn(
+                'p-1',
+                activeChart === charts.length - 1 ? 'text-foreground-subtle' : 'text-foreground'
+              )}
+              disabled={activeChart === charts.length - 1}
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          {/* Active Chart */}
+          <div className="p-3">
+            {charts[activeChart] && (
+              <>
+                <AreaChart 
+                  data={charts[activeChart].data} 
+                  color={charts[activeChart].color} 
+                  height={150} 
+                />
+                <div className="flex justify-between mt-2 text-[9px] text-foreground-subtle font-mono">
+                  <span>{Math.min(...charts[activeChart].data).toFixed(0)} {charts[activeChart].unit}</span>
+                  <span>{Math.max(...charts[activeChart].data).toFixed(0)} {charts[activeChart].unit}</span>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Chart Dots */}
+          <div className="flex justify-center gap-2 pb-3">
+            {charts.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setActiveChart(i)}
+                className={cn(
+                  'w-1.5 h-1.5 rounded-full transition-colors',
+                  i === activeChart ? 'bg-secondary' : 'bg-border'
+                )}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Transaction Volume Bars */}
+        <div className="p-3 border-t border-border">
+          <h3 className="text-xs font-semibold uppercase tracking-wider mb-3">
+            Daily Transaction Volume
+          </h3>
+          <div className="flex items-end gap-px h-20">
+            {txData.slice(-30).map((value, i) => {
+              const max = Math.max(...txData);
+              const height = (value / max) * 100;
+              return (
+                <div
+                  key={i}
+                  className="flex-1 bg-primary/40"
+                  style={{ height: `${height}%` }}
+                />
+              );
+            })}
+          </div>
+          <div className="flex justify-between mt-2 text-[9px] text-foreground-subtle">
+            <span>30 days ago</span>
+            <span>Today</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop View
   return (
     <div className="min-h-screen">
-      {/* Header */}
       <div className="h-16 border-b border-border bg-background-elevated/50 backdrop-blur-sm px-6 flex items-center">
         <div className="flex items-center gap-3">
           <BarChart3 size={20} className="text-secondary" />

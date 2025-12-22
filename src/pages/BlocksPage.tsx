@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { ArrowRight, Clock, Hash, Layers } from 'lucide-react';
+import { ArrowRight, Clock, Hash, Layers, ChevronDown } from 'lucide-react';
 import { SearchInput } from '@/components/search/SearchInput';
+import { MobileBlockCard } from '@/components/mobile/MobileBlockCard';
+import { MobileBottomSheet } from '@/components/mobile/MobileBottomSheet';
+import { useMobile } from '@/hooks/useMobile';
 
 interface Block {
   height: number;
@@ -31,6 +34,7 @@ const BlocksPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [highlightedHeight, setHighlightedHeight] = useState<number | null>(null);
   const blockRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const { isMobile } = useMobile();
 
   useEffect(() => {
     setBlocks(generateMockBlocks(50, 489271));
@@ -50,7 +54,6 @@ const BlocksPage = () => {
           setHighlightedHeight(null);
         }
       } else {
-        // Search by hash prefix
         const block = blocks.find(b => b.hash.toLowerCase().includes(searchQuery.toLowerCase()));
         if (block) {
           setHighlightedHeight(block.height);
@@ -74,6 +77,88 @@ const BlocksPage = () => {
     return `${hours}h ago`;
   };
 
+  // Mobile View
+  if (isMobile) {
+    return (
+      <div className="flex flex-col">
+        {/* Mobile Block List */}
+        <div className="divide-y divide-border">
+          {blocks.map((block) => (
+            <MobileBlockCard
+              key={block.height}
+              height={block.height}
+              txCount={block.txCount}
+              timestamp={block.timestamp}
+              fees={block.fees}
+              hash={block.hash}
+              onTap={() => setSelectedBlock(block)}
+            />
+          ))}
+        </div>
+
+        {/* Block Detail Bottom Sheet */}
+        <MobileBottomSheet
+          isOpen={!!selectedBlock}
+          onClose={() => setSelectedBlock(null)}
+          title={`Block #${selectedBlock?.height.toLocaleString()}`}
+          height="half"
+        >
+          {selectedBlock && (
+            <div className="p-4 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-muted/30 p-3">
+                  <div className="text-[9px] uppercase tracking-wider text-foreground-subtle mb-1">
+                    <Hash size={10} className="inline mr-1" />Height
+                  </div>
+                  <div className="text-sm font-mono font-medium text-secondary">
+                    #{selectedBlock.height.toLocaleString()}
+                  </div>
+                </div>
+                <div className="bg-muted/30 p-3">
+                  <div className="text-[9px] uppercase tracking-wider text-foreground-subtle mb-1">
+                    <Clock size={10} className="inline mr-1" />Time
+                  </div>
+                  <div className="text-sm font-mono">
+                    {formatTimeAgo(selectedBlock.timestamp)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm py-2 border-b border-border-subtle">
+                  <span className="text-foreground-muted">Transactions</span>
+                  <span className="font-mono text-secondary">{selectedBlock.txCount}</span>
+                </div>
+                <div className="flex justify-between text-sm py-2 border-b border-border-subtle">
+                  <span className="text-foreground-muted">Total Fees</span>
+                  <span className="font-mono">{selectedBlock.fees.toFixed(6)} SC</span>
+                </div>
+                <div className="flex justify-between text-sm py-2 border-b border-border-subtle">
+                  <span className="text-foreground-muted">Size</span>
+                  <span className="font-mono">{(selectedBlock.size / 1000).toFixed(1)} KB</span>
+                </div>
+                <div className="flex justify-between text-sm py-2 border-b border-border-subtle">
+                  <span className="text-foreground-muted">Miner</span>
+                  <span className="font-mono text-foreground-subtle">{selectedBlock.miner}</span>
+                </div>
+              </div>
+
+              <div>
+                <div className="text-[9px] uppercase tracking-wider text-foreground-subtle mb-1">
+                  Block Hash
+                </div>
+                <div className="text-xs font-mono break-all text-foreground-muted bg-muted/30 p-2">
+                  {selectedBlock.hash}
+                </div>
+              </div>
+            </div>
+          )}
+        </MobileBottomSheet>
+      </div>
+    );
+  }
+
+  // Desktop View
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -111,7 +196,6 @@ const BlocksPage = () => {
                     if (el) blockRefs.current.set(block.height, el);
                   }}
                 >
-                  {/* Connection line */}
                   {index > 0 && (
                     <div className="absolute left-4 -top-4 w-px h-4 bg-border" />
                   )}
@@ -126,7 +210,6 @@ const BlocksPage = () => {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        {/* Height indicator */}
                         <div className={cn(
                           'w-8 h-8 flex items-center justify-center border',
                           selectedBlock?.height === block.height 
@@ -184,7 +267,7 @@ const BlocksPage = () => {
           </div>
         </div>
 
-        {/* Detail Panel - Slides in from right */}
+        {/* Detail Panel */}
         <div 
           className={cn(
             'w-[400px] border-l border-border bg-background-elevated/80 backdrop-blur-xl',
