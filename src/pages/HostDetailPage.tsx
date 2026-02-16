@@ -9,26 +9,103 @@ import {
   Lock, ChevronDown, ChevronUp, Copy
 } from 'lucide-react';
 
-// Speed gauge - compact
+// Speed gauge - speedtest-style arc
 const SpeedGauge = ({ value, max, label, unit, compact = false }: { value: number; max: number; label: string; unit: string; compact?: boolean }) => {
-  const percentage = (value / max) * 100;
-  const angle = (percentage / 100) * 180 - 90;
-  const size = compact ? 'w-24 h-12' : 'w-28 h-14';
+  const percentage = Math.min((value / max) * 100, 100);
+  const cx = 100, cy = 100, r = 80;
+  const startAngle = 135, endAngle = 405;
+  const totalArc = endAngle - startAngle;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+
+  const arcPath = (start: number, end: number) => {
+    const s = toRad(start), e = toRad(end);
+    const x1 = cx + r * Math.cos(s), y1 = cy + r * Math.sin(s);
+    const x2 = cx + r * Math.cos(e), y2 = cy + r * Math.sin(e);
+    const large = end - start > 180 ? 1 : 0;
+    return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
+  };
+
+  const valueAngle = startAngle + (percentage / 100) * totalArc;
+  const needleAngle = toRad(valueAngle);
+  const needleLen = r - 12;
+
+  // Tick marks
+  const ticks = [0, 1, 5, 10, 20, 30, 50, 75, 100];
+  const tickPositions = ticks.map(t => {
+    const pct = (t / max) * 100;
+    const angle = startAngle + (pct / 100) * totalArc;
+    const rad = toRad(angle);
+    const isMajor = [0, 10, 20, 50, 100].includes(t) || t === max;
+    return { value: t, angle, rad, isMajor };
+  }).filter(t => t.value <= max);
+
+  const size = compact ? 'w-[120px] h-[100px]' : 'w-[180px] h-[150px]';
 
   return (
-    <div className="flex flex-col items-center gap-1">
-      <span className="text-[9px] uppercase tracking-wider text-foreground-subtle">{label}</span>
-      <div className={cn('relative overflow-hidden', size)}>
-        <svg viewBox="0 0 120 60" className="w-full h-full">
-          <path d="M 10 55 A 50 50 0 0 1 110 55" fill="none" stroke="hsl(var(--border))" strokeWidth="8" strokeLinecap="round" />
-          <path d="M 10 55 A 50 50 0 0 1 110 55" fill="none" stroke="hsl(var(--secondary))" strokeWidth="8" strokeLinecap="round" strokeDasharray={`${percentage * 1.57} 157`} />
-          <line x1="60" y1="55" x2={60 + 35 * Math.cos((angle * Math.PI) / 180)} y2={55 - 35 * Math.sin((angle * Math.PI) / 180)} stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" />
-          <circle cx="60" cy="55" r="3" fill="hsl(var(--primary))" />
+    <div className="flex flex-col items-center">
+      <span className="text-[9px] uppercase tracking-wider text-foreground-subtle mb-1">{label}</span>
+      <div className={cn('relative', size)}>
+        <svg viewBox="0 0 200 160" className="w-full h-full">
+          {/* Background arc track */}
+          <path d={arcPath(startAngle, endAngle)} fill="none" stroke="hsl(var(--border))" strokeWidth="12" strokeLinecap="round" />
+
+          {/* Active arc - gradient effect via segments */}
+          {percentage > 0 && (
+            <path d={arcPath(startAngle, valueAngle)} fill="none" stroke="hsl(var(--secondary))" strokeWidth="12" strokeLinecap="round" />
+          )}
+
+          {/* Glow on active arc */}
+          {percentage > 0 && (
+            <path d={arcPath(startAngle, valueAngle)} fill="none" stroke="hsl(var(--secondary))" strokeWidth="16" strokeLinecap="round" opacity="0.15" />
+          )}
+
+          {/* Tick marks */}
+          {tickPositions.map((tick, i) => {
+            const innerR = tick.isMajor ? r - 20 : r - 14;
+            const outerR = r - 6;
+            return (
+              <g key={i}>
+                <line
+                  x1={cx + innerR * Math.cos(tick.rad)} y1={cy + innerR * Math.sin(tick.rad)}
+                  x2={cx + outerR * Math.cos(tick.rad)} y2={cy + outerR * Math.sin(tick.rad)}
+                  stroke="hsl(var(--foreground-subtle))" strokeWidth={tick.isMajor ? 1.5 : 0.8}
+                />
+                {tick.isMajor && (
+                  <text
+                    x={cx + (r - 28) * Math.cos(tick.rad)} y={cy + (r - 28) * Math.sin(tick.rad)}
+                    fill="hsl(var(--foreground-muted))" fontSize={compact ? "7" : "8"} textAnchor="middle" dominantBaseline="middle"
+                    fontFamily="JetBrains Mono, monospace"
+                  >
+                    {tick.value}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+
+          {/* Needle */}
+          <line
+            x1={cx} y1={cy}
+            x2={cx + needleLen * Math.cos(needleAngle)} y2={cy + needleLen * Math.sin(needleAngle)}
+            stroke="hsl(var(--foreground))" strokeWidth="2.5" strokeLinecap="round"
+          />
+          {/* Needle glow tip */}
+          <circle
+            cx={cx + needleLen * Math.cos(needleAngle)} cy={cy + needleLen * Math.sin(needleAngle)}
+            r="3" fill="hsl(var(--primary))" opacity="0.8"
+          />
+          {/* Center dot */}
+          <circle cx={cx} cy={cy} r="5" fill="hsl(var(--foreground))" />
+          <circle cx={cx} cy={cy} r="2.5" fill="hsl(var(--background))" />
+
+          {/* Value display */}
+          <text x={cx} y={cy + 28} textAnchor="middle" fill="hsl(var(--secondary))" fontSize={compact ? "18" : "24"} fontWeight="600" fontFamily="JetBrains Mono, monospace">
+            {value.toFixed(0).padStart(2, '0')}
+          </text>
+          <text x={cx} y={cy + 42} textAnchor="middle" fill="hsl(var(--foreground-muted))" fontSize={compact ? "7" : "9"} fontFamily="JetBrains Mono, monospace">
+            {unit}
+          </text>
         </svg>
-      </div>
-      <div className="flex items-baseline gap-1">
-        <span className="font-mono text-sm text-secondary">{value}</span>
-        <span className="text-[9px] text-foreground-muted">{unit}</span>
       </div>
     </div>
   );
