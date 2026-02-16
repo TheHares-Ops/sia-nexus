@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import BlocksPage from "./pages/BlocksPage";
 import TransactionsPage from "./pages/TransactionsPage";
 import HostsPage from "./pages/HostsPage";
+import HostDetailPage from "./pages/HostDetailPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import MapPage from "./pages/MapPage";
 import AlertsPage from "./pages/AlertsPage";
@@ -31,6 +32,7 @@ const App = () => (
               <Route path="/blocks" element={<BlocksPage />} />
               <Route path="/transactions" element={<TransactionsPage />} />
               <Route path="/hosts" element={<HostsPage />} />
+              <Route path="/hosts/:hostId" element={<HostDetailPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/map" element={<MapPage />} />
               <Route path="/alerts" element={<AlertsPage />} />

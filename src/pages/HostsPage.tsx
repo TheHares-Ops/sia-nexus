@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Server, ArrowUpRight, Wifi, HardDrive, DollarSign, Shield, X, TrendingUp, TrendingDown, Filter, ChevronRight } from 'lucide-react';
+import { Server, ArrowUpRight, Wifi, HardDrive, DollarSign, Shield, X, TrendingUp, TrendingDown, Filter, ChevronRight, ExternalLink } from 'lucide-react';
 import { SearchInput } from '@/components/search/SearchInput';
 import { MobileHostRow } from '@/components/mobile/MobileHostRow';
 import { MobileBottomSheet } from '@/components/mobile/MobileBottomSheet';
@@ -85,6 +86,7 @@ const HostsPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSort, setShowSort] = useState(false);
   const { isMobile } = useMobile();
+  const navigate = useNavigate();
 
   useEffect(() => {
     setHosts(generateMockHosts(50));
@@ -545,7 +547,7 @@ const HostsPage = () => {
               </div>
             </div>
 
-            <div className="p-6">
+            <div className="p-6 border-b border-border-subtle">
               <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
                 <DollarSign size={14} className="text-secondary" />
                 Price Trend
@@ -582,6 +584,17 @@ const HostsPage = () => {
                   );
                 })}
               </div>
+            </div>
+
+            {/* See More Button */}
+            <div className="p-6">
+              <button
+                onClick={() => navigate(`/hosts/${selectedHost.id}`)}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 transition-colors text-sm font-medium"
+              >
+                <ExternalLink size={14} />
+                See more
+              </button>
             </div>
           </div>
         )}
